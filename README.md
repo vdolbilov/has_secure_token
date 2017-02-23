@@ -78,6 +78,14 @@ user.secret_token # => "6JTE6tZkBgbA6H426WkZteHZtzq1viVapD8QJ5B8v6G9zaxmSQHxUULN
 user.regenerate_secret_token # => true
 ```
 
+To generate unique `tokens` only:
+
+```ruby
+class User < ActiveRecord::Base
+  has_secure_token :token, uniq: true
+end
+```
+
 ## Running tests
 
 Running

@@ -13,6 +13,9 @@ module ActiveRecord
       #
       #     # will generate token 80 character long, Default is 24 character long
       #     has_secure_token :auth_secret, token_size: 80
+      #
+      #     has_secure_token uniq: true
+      #     has_secure_token :auth_token, uniq: true, token_size: 16
       #   end
       #
       #   user = User.new
@@ -31,13 +34,34 @@ module ActiveRecord
       # with this even more unlikely scenario.
       def has_secure_token(attribute = :token, opts = {})
         # Load securerandom only when has_secure_token is used.
-        size = opts[:token_size] || 24
+        size = opts.fetch(:token_size, 24)
+        uniq = opts.fetch(:uniq, false)
+
         require 'active_support/core_ext/securerandom'
-        define_method("regenerate_#{attribute}") { update_attributes attribute => self.class.generate_unique_secure_token(size) }
-        before_create { self.send("#{attribute}=", self.class.generate_unique_secure_token(size)) unless self.send("#{attribute}?")}
+
+        define_method("regenerate_#{attribute}") do
+          update_attributes attribute => self.class.generate_unique_secure_token(attribute, size, uniq)
+        end
+
+        before_create do
+          unless self.send("#{attribute}?")
+            self.send("#{attribute}=", self.class.generate_unique_secure_token(attribute, size, uniq))
+          end
+        end
       end
 
-      def generate_unique_secure_token(size)
+      def generate_unique_secure_token(attribute, size, uniq)
+        if uniq
+          loop do
+            random_token = secure_random_token(size)
+            break random_token unless self.exists?(attribute => random_token)
+          end
+        else
+          secure_random_token(size)
+        end
+      end
+
+      def secure_random_token(size)
         SecureRandom.base58(size)
       end
     end
